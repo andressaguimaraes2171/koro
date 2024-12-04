@@ -43,9 +43,9 @@
     </tr>
     <?php foreach ($offers as $provider => $offer) { ?>
     <tr>
-        <td><?= $provider ?></td>
-        <td><?php if (($provider) == 'ing-diba') echo $offer['zinsen']; else { echo $offers[$provider]['Interest']; } ?>%</td>
-        <td><?php if ($provider == 'ing-diba') echo $offer['duration']; else { echo $offer['Terms']['Duration']; } ?> month</td>
+        <td><?php echo $offer['provider']; ?></td>
+        <td><?php echo $offer['rate']; ?>%</td>
+        <td><?php echo $offer['duration']; ?> month</td>
     </tr>
     <?php } ?>
 </body>

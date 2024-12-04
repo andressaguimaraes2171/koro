@@ -13,12 +13,12 @@ class SmavaApiService implements CreditProviderInterface
     private string $apiUrl;
     private string $xAccessToken;
     private string $providerName = 'smava';
-    public function __construct(HttpRequestService $httpService, LoggerInterface $logger)
+    public function __construct(HttpRequestService $httpService, LoggerInterface $logger, array $apiSettings)
     {
         $this->httpService = $httpService;
         $this->logger = $logger;
-        $this->apiUrl = $_ENV['API_URL_SMAVA'];
-        $this->xAccessToken = $_ENV['X_ACCESS_KEY_SMAVA'];
+        $this->apiUrl = $apiSettings['apiUrl'];
+        $this->xAccessToken = $apiSettings['xAccessToken'];
     }
 
     public function retrieveApiResponse(int $amount)
@@ -62,7 +62,7 @@ class SmavaApiService implements CreditProviderInterface
             }
 
             $offer['rate'] = $response['Interest'];
-            $offer['duration'] = $response['Terms']['duration'];
+            $offer['duration'] = $response['Terms']['Duration'];
             $offer['provider'] = $this->providerName;
             return $offer;
 

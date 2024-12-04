@@ -13,12 +13,12 @@ class IngdibaApiService implements CreditProviderInterface
     private string $apiUrl;
     private string $xAccessToken;
     private string $providerName = 'ingdiba';
-    public function __construct(HttpRequestService $httpService, LoggerInterface $logger)
+    public function __construct(HttpRequestService $httpService, LoggerInterface $logger, array $apiSettings)
     {
         $this->httpService = $httpService;
         $this->logger = $logger;
-        $this->apiUrl = $_ENV['API_URL_INGDIBA'];
-        $this->xAccessToken = $_ENV['X_ACCESS_KEY_INGDIBA'];
+        $this->apiUrl = $apiSettings['apiUrl'];
+        $this->xAccessToken = $apiSettings['xAccessToken'];
     }
     public function retrieveApiResponse(int $amount)
     {
@@ -81,4 +81,5 @@ class IngdibaApiService implements CreditProviderInterface
         $response = $this->retrieveApiResponse($amount);
         return $this->formatProviderResponse($response);
     }
+
 }
