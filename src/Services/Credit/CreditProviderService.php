@@ -1,27 +1,54 @@
 <?php
 
 namespace App\Services\Credit;
-use App\Services\HttpRequestService;
 use Psr\Log\LoggerInterface;
+use Exception;
 
 class CreditProviderService
 {
     private CreditProviderFactory $creditProviderFactory;
-    public function __construct(CreditProviderFactory $creditProviderFactory)
+    private LoggerInterface $logger;
+    public function __construct(CreditProviderFactory $creditProviderFactory, LoggerInterface $logger)
     {
-
         $this->creditProviderFactory = $creditProviderFactory;
+        $this->logger = $logger;
     }
 
-    public function retrieveCreditRates(int $amount)
+    public function retrieveCreditRates(int $amount): array
     {
-        $providers = $this->creditProviderFactory->createProviders();
+        $providers = [];
         $response = [];
+        try {
+            $providers = $this->creditProviderFactory->createProviders();
+        } catch (Exception $e) {
+            $this->logger->error($e->getMessage(), [
+                'exception' => $e
+            ]);
+        }
 
         foreach ($providers as $provider) {
             $response[] = $provider->getRates($amount);
         }
 
+        try {
+            $this->validateResponse($response);
+        }  catch (Exception $e) {
+            $this->logger->error($e->getMessage(), [
+                'response' => $response,
+                'exception' => $e
+            ]);
+        }
+
         return $response;
+    }
+
+    private function validateResponse(array $response): void
+    {
+        foreach ($response as $offer) {
+            if (empty($offer['rate']) || empty($offer['duration']) || empty($offer['provider'])) {
+                unset($response[$offer]);
+                throw new Exception('The formatting of the api service is not correct: '.$offer['provider']);
+            }
+        }
     }
 }

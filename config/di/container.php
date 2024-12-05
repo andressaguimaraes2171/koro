@@ -7,6 +7,9 @@ use App\Services\HttpRequestService;
 use App\Services\Credit\CreditProviderFactory;
 use App\Services\Credit\CreditProviderService;
 use Psr\Log\LoggerInterface;
+use function DI\autowire;
+use function DI\create;
+use function DI\get;
 
 $containerBuilder = new ContainerBuilder();
 $containerBuilder->addDefinitions([
@@ -27,11 +30,11 @@ $containerBuilder->addDefinitions([
         $logger->pushHandler(new StreamHandler('error.log', Logger::ERROR));
         return $logger;
     },
-    HttpRequestService::class => \DI\create(),
-    CreditProviderFactory::class => \DI\autowire()
-        ->constructorParameter('providers', DI\get('providers'))
-        ->constructorParameter('apiSettings', DI\get('providersApiSettings')),
-    CreditProviderService::class => \DI\autowire()
+    HttpRequestService::class => create(),
+    CreditProviderFactory::class => autowire()
+        ->constructorParameter('providers', get('providers'))
+        ->constructorParameter('apiSettings', get('providersApiSettings')),
+    CreditProviderService::class => autowire()
 ]);
 
 

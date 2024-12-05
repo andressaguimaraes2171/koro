@@ -28,7 +28,7 @@
 </head>
 <body>
 
-<h2>Ratenkredit</h2>
+<h2>Credit Rates</h2>
 
 <form>
     <input type="text" name="amount" value="<?=@$_GET['amount'] ?>" placeholder="$100">
@@ -44,8 +44,8 @@
     <?php foreach ($offers as $provider => $offer) { ?>
     <tr>
         <td><?php echo $offer['provider']; ?></td>
-        <td><?php echo $offer['rate']; ?>%</td>
-        <td><?php echo $offer['duration']; ?> month</td>
+        <td><?php echo $offer['rate']; ?></td>
+        <td><?php echo $offer['duration']; ?></td>
     </tr>
     <?php } ?>
 </body>

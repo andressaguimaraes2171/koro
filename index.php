@@ -10,4 +10,4 @@ if (@$_GET['submit']) {
     $offers = $creditService->retrieveCreditRates($_GET['amount']);
 }
 
-include(dirname(__FILE__).'/view.phtml');
+include(__DIR__ .'/view.phtml');

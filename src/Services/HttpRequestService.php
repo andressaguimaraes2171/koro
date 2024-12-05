@@ -12,20 +12,15 @@ class HttpRequestService
         $this->client = new Client();
     }
 
-    public function get($url, $headers = [])
+    public function get($url, $headers = []): string
     {
         $response = $this->client->get($url, ['headers' => $headers]);
         return $response->getBody()->getContents();
     }
 
-    public function post($url, $data, $headers = [])
+    public function post($url, $data, $headers = []): string
     {
         $response = $this->client->post($url, ['json' => $data, 'headers' => $headers]);
         return $response->getBody()->getContents();
-    }
-
-    public function setHeaders($headers)
-    {
-        $this->client->setDefaultOption('headers', $headers);
     }
 }
