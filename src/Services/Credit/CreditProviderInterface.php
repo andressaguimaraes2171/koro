@@ -3,5 +3,5 @@
 namespace App\Services\Credit;
 interface CreditProviderInterface
 {
-    public function getRates(int $amount): array;
+    public function getRates(float $amount): array;
 }

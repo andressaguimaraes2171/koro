@@ -2,31 +2,33 @@
 
 namespace App\Services\Credit\Providers;
 
+use App\Config\ProviderConfig;
 use App\Services\Credit\CreditProviderInterface;
 use App\Services\HttpRequestService;
-use Psr\Log\LoggerInterface;
 use Exception;
 use JsonException;
+use Psr\Log\LoggerInterface;
 
 class IngdibaApiService implements CreditProviderInterface
 {
     private HttpRequestService $httpService;
     private LoggerInterface $logger;
-    private string $apiUrl;
-    private string $xAccessToken;
+
+    private ProviderConfig $providerApiSettings;
+
     private string $providerName = 'ingdiba';
-    public function __construct(HttpRequestService $httpService, LoggerInterface $logger, array $apiSettings)
+
+    public function __construct(HttpRequestService $httpService, LoggerInterface $logger, ProviderConfig $providerApiSettings)
     {
         $this->httpService = $httpService;
         $this->logger = $logger;
-        $this->apiUrl = $apiSettings['apiUrl'];
-        $this->xAccessToken = $apiSettings['xAccessToken'];
+        $this->providerApiSettings = $providerApiSettings;
     }
     private function retrieveApiResponse(int $amount)
     {
-        $url = $this->apiUrl . '&amount=' . $amount;
+        $url = $this->providerApiSettings->getApiUrl() . '&amount=' . $amount;
         return $this->httpService->get($url, [
-            'X-Access-key' => $this->xAccessToken,
+            'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
         ]);
     }
 
@@ -81,7 +83,7 @@ class IngdibaApiService implements CreditProviderInterface
         }
     }
 
-    public function getRates(int $amount): array
+    public function getRates(float $amount): array
     {
         $response = $this->retrieveApiResponse($amount);
         return $this->formatProviderResponse($response);

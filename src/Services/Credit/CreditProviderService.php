@@ -1,8 +1,9 @@
 <?php
 
 namespace App\Services\Credit;
-use Psr\Log\LoggerInterface;
+use App\Factories\Credit\CreditProviderFactory;
 use Exception;
+use Psr\Log\LoggerInterface;
 
 class CreditProviderService
 {
@@ -14,7 +15,7 @@ class CreditProviderService
         $this->logger = $logger;
     }
 
-    public function retrieveCreditRates(int $amount): array
+    public function retrieveCreditRates(float $amount): array
     {
         $providers = [];
         $response = [];
