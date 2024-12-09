@@ -24,53 +24,49 @@ class IngdibaApiService implements CreditProviderInterface
         $this->logger = $logger;
         $this->providerApiSettings = $providerApiSettings;
     }
-    private function retrieveApiResponse(int $amount)
+    private function retrieveApiResponse(int $amount): string
     {
         $url = $this->providerApiSettings->getApiUrl() . '&amount=' . $amount;
-        return $this->httpService->get($url, [
-            'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
-        ]);
+        try {
+            return $this->httpService->get($url, [
+                'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
+            ]);
+        } catch (Exception $e) {
+            $this->logger->error('Error fetching data from Ingdiba API: ' . $e->getMessage(), [
+                'url' => $url,
+            ]);
+        }
+        return '';
     }
-
-    private function formatProviderResponse(string $response): array
+    private function apiResponseToArray(string $response): array
     {
         try {
-            $decodedResponse = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-
-            $validatedResponse = $this->validateResponse($decodedResponse);
-            $offer['rate'] = $validatedResponse['zinsen'].'%';
-
-            $duration = (int) $validatedResponse['duration'];
-            $offer['duration'] = $duration > 1 ?  $duration . ' months' : $duration . ' month';
-            $offer['provider'] = $this->providerName;
-            return $offer;
-
-        } catch (JsonException $e) {
+            return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
             $this->logger->error('JSON parsing error: ' . $e->getMessage(), [
                 'response' => $response,
                 'exception' => $e
             ]);
-
-            return [];
-
-        } catch (Exception $e) {
-            $this->logger->error('Unexpected error in response formatting: ' . $e->getMessage(), [
-                'response' => $response,
-                'exception' => $e
-            ]);
-
             return [];
         }
     }
+    private function formatProviderResponse(array $response): array
+    {
 
-    private function validateResponse(?array $response): array
+        $offer['rate'] = $response['zinsen'].'%';
+        $duration = (int) $response['duration'];
+        $offer['duration'] = $duration > 1 ?  $duration . ' months' : $duration . ' month';
+        $offer['provider'] = $this->providerName;
+        return $offer;
+
+    }
+
+    private function isValidResponse(?array $response): bool
     {
         try {
             if (!array_key_exists('zinsen', $response) || !array_key_exists('duration', $response)) {
                 throw new Exception('Invalid response format: missing required fields');
             }
-
-            return $response;
 
         } catch (Exception $e) {
             $this->logger->error($e->getMessage(), [
@@ -78,15 +74,24 @@ class IngdibaApiService implements CreditProviderInterface
                 'exception' => $e
             ]);
 
-            return [];
-
+            return false;
         }
+
+        return true;
     }
 
     public function getRates(float $amount): array
     {
-        $response = $this->retrieveApiResponse($amount);
-        return $this->formatProviderResponse($response);
-    }
+        $apiResponse = $this->retrieveApiResponse($amount);
+        if (!empty($apiResponse)) {
+            $response = $this->apiResponseToArray($apiResponse);
+            if (!empty($response)) {
+                if ($this->isValidResponse($response) === true) {
+                    return $this->formatProviderResponse($response);
+                }
+            }
+        }
 
+        return [];
+    }
 }

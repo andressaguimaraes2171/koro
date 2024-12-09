@@ -2,6 +2,8 @@
 
 namespace App\Config;
 
+use InvalidArgumentException;
+
 class ProvidersConfig
 {
     private Environment $environment;
@@ -13,6 +15,10 @@ class ProvidersConfig
 
     public function addProvider(string $name, ProviderConfig $config): void
     {
+        if (isset($this->providers[$name])) {
+            throw new InvalidArgumentException("Provider '$name' is already configured");
+        }
+
         $this->providers[$name] = $config;
     }
 
@@ -37,6 +43,10 @@ class ProvidersConfig
     private function loadProvidersFromEnvironment(): void
     {
         $activeProviders = $this->environment->get('ACTIVE_PROVIDERS');
+        if (empty($activeProviders)) {
+            return;
+        }
+
         $providers = explode(',', $activeProviders);
         foreach ($providers as $providerName) {
             $this->addProvider(
@@ -46,6 +56,7 @@ class ProvidersConfig
                     $this->environment->get('X_ACCESS_KEY_' . strtoupper($providerName))
                 )
             );
+
         }
     }
 }

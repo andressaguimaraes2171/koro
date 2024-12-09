@@ -45,9 +45,9 @@ class CreditProviderService
 
     private function validateResponse(array $response): void
     {
-        foreach ($response as $offer) {
+        foreach ($response as $key => $offer) {
             if (empty($offer['rate']) || empty($offer['duration']) || empty($offer['provider'])) {
-                unset($response[$offer]);
+                unset($response[$key]);
                 throw new Exception('The formatting of the api service is not correct: '.$offer['provider']);
             }
         }

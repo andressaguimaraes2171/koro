@@ -14,14 +14,13 @@ use function DI\autowire;
 use function DI\create;
 use function DI\get;
 
-// Load environment variables
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-$dotenv->load();
-
-
 $containerBuilder = new ContainerBuilder();
 $containerBuilder->addDefinitions([
-    Environment::class => create(Environment::class),
+    \Dotenv\Dotenv::class => function() {
+        return Dotenv::createImmutable(__DIR__ . '/../../');
+    },
+    Environment::class => create(Environment::class)
+        ->constructor(get(\Dotenv\Dotenv::class)),
     ProvidersConfig::class => autowire(),
     // Bind LoggerInterface to concrete Logger implementation
     LoggerInterface::class => function() {

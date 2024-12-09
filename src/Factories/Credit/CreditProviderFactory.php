@@ -38,7 +38,7 @@ class CreditProviderFactory
                 $providers[] = new $this->providerMapping[$providerName]($this->httpService, $this->logger, $provider);
 
             } else {
-                throw new Exception("Unknown provider: $provider");
+                throw new Exception("Unknown provider: $providerName");
             }
         }
 
