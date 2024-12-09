@@ -61,18 +61,17 @@ class SmavaApiServiceTest extends TestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function testGetRatesReturnsEmptyArrayOnApiError(): void
+    public function testGetRatesReturnsEmptyArrayOnHttpError(): void
     {
-        $amount = 5000;
+        $amount = 5000.0;
 
-        $this->providerConfig->method('getApiUrl')
-            ->willReturn('https://api.smava.de/rates');
-
+        $this->providerConfig->method('getApiUrl')->willReturn('https://api.smava.test');
         $this->httpService->method('get')
-            ->willThrowException(new Exception('API Error'));
+            ->willThrowException(new Exception('Connection failed'));
 
-        $this->logger->expects($this->once())
-            ->method('error');
+        $this->logger->expects($this->atLeast(1))
+            ->method('error')
+            ->with($this->stringContains('Failed to retrieve smava API response for URL'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
@@ -80,34 +79,31 @@ class SmavaApiServiceTest extends TestCase
 
     public function testGetRatesReturnsEmptyArrayOnInvalidJson(): void
     {
-        $amount = 5000;
+        $amount = 5000.0;
+        $invalidJson = '{invalid-json}';
 
-        $this->providerConfig->method('getApiUrl')
-            ->willReturn('https://api.smava.de/rates');
-
-        $this->httpService->method('get')
-            ->willReturn('invalid-json');
+        $this->providerConfig->method('getApiUrl')->willReturn('https://api.smava.test');
+        $this->httpService->method('get')->willReturn($invalidJson);
 
         $this->logger->expects($this->once())
-            ->method('error');
+            ->method('error')
+            ->with($this->stringContains('Failed to parse smava API'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
     }
 
-    public function testGetRatesReturnsEmptyArrayOnMissingRequiredFields(): void
+    public function testGetRatesReturnsEmptyArrayOnMissingFields(): void
     {
-        $amount = 5000;
-        $apiResponse = json_encode(['someField' => 'value']);
+        $amount = 5000.0;
+        $invalidResponse = '{"some_field": "value"}';
 
-        $this->providerConfig->method('getApiUrl')
-            ->willReturn('https://api.smava.de/rates');
-
-        $this->httpService->method('get')
-            ->willReturn($apiResponse);
+        $this->providerConfig->method('getApiUrl')->willReturn('https://api.smava.test');
+        $this->httpService->method('get')->willReturn($invalidResponse);
 
         $this->logger->expects($this->once())
-            ->method('error');
+            ->method('error')
+            ->with($this->stringContains('Response is missing a valid'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
@@ -118,7 +114,7 @@ class SmavaApiServiceTest extends TestCase
         $amount = 5000;
         $apiResponse = json_encode([
             'Interest' => '5,5',
-            'Terms' => ['Duration' => '0.08333'] // 1 month
+            'Terms' => ['Duration' => '2 years'] // 1 month
         ]);
 
         $this->providerConfig->method('getApiUrl')
@@ -129,7 +125,7 @@ class SmavaApiServiceTest extends TestCase
 
         $expected = [
             'rate' => '5.5',
-            'duration' => '1 month',
+            'duration' => '24 months',
             'provider' => 'smava'
         ];
 

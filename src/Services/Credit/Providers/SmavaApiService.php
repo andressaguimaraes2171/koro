@@ -5,6 +5,9 @@ namespace App\Services\Credit\Providers;
 use App\Config\ProviderConfig;
 use App\Services\Credit\CreditProviderInterface;
 use App\Services\HttpRequestService;
+use App\Errors\Credit\Provider\ApiRequestException;
+use App\Errors\Credit\Provider\ApiResponseFormatException;
+use App\Errors\Credit\Provider\InvalidApiResponseException;
 use Exception;
 use JsonException;
 use Psr\Log\LoggerInterface;
@@ -28,28 +31,22 @@ class SmavaApiService implements CreditProviderInterface
     private function retrieveApiResponse(int $amount): string
     {
         $url = $this->providerApiSettings->getApiUrl() . '&amount=' . $amount;
+
         try {
             return $this->httpService->get($url, [
                 'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
             ]);
         } catch (Exception $e) {
-            $this->logger->error('Error fetching data from Smava API: ' . $e->getMessage(), [
-                'url' => $url,
-            ]);
+            throw new ApiRequestException("Failed to retrieve smava API response for URL: {$url}", 0, $e);
         }
-        return '';
     }
 
     private function apiResponseToArray(string $response): array
     {
         try {
-            return json_decode($response, true, null, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            $this->logger->error('JSON parsing error: ' . $e->getMessage(), [
-                'response' => $response,
-                'exception' => $e
-            ]);
-            return [];
+            return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
+            throw new ApiResponseFormatException("Failed to parse smava API response to array: {$apiResponse}", 0, $e);
         }
     }
 
@@ -68,17 +65,8 @@ class SmavaApiService implements CreditProviderInterface
 
     private function isValidResponse(?array $response): bool
     {
-        try {
-            if (!array_key_exists('Interest', $response) || !array_key_exists('Duration', $response['Terms'])) {
-                throw new Exception('Invalid response format: missing required fields');
-            }
-        } catch (Exception $e) {
-            $this->logger->error($e->getMessage(), [
-                'response' => $response,
-                'exception' => $e
-            ]);
-
-            return false;
+        if (!isset($response['Interest']) || !isset($response['Terms']['Duration'])) {
+            throw new InvalidApiResponseException("Response is missing a valid [Interest] or [Terms][Duration] key", 0);
         }
 
         return true;
@@ -86,14 +74,18 @@ class SmavaApiService implements CreditProviderInterface
 
     public function getRates(float $amount): array
     {
-        $apiResponse = $this->retrieveApiResponse($amount);
-        if (!empty($apiResponse)) {
+        try {
+            $apiResponse = $this->retrieveApiResponse($amount);
             $response = $this->apiResponseToArray($apiResponse);
-            if (!empty($response)) {
-                if ($this->isValidResponse($response) === true) {
-                    return $this->formatProviderResponse($response);
-                }
+
+            if ($this->isValidResponse($response)) {
+                return $this->formatProviderResponse($response);
             }
+        } catch (ApiRequestException | ApiResponseFormatException | InvalidApiResponseException | Exception $e) {
+            $this->logger->error($e->getMessage(), [
+                'exception' => get_class($e),
+                'stack' => $e->getTraceAsString(),
+            ]);
         }
 
         return [];

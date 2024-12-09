@@ -69,7 +69,7 @@ class IngdibaApiServiceTest extends TestCase
 
         $this->logger->expects($this->atLeast(1))
             ->method('error')
-            ->with('Error fetching data from Ingdiba API: Connection failed');
+            ->with($this->stringContains('Failed to retrieve ingdiba API response for URL'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
@@ -85,7 +85,7 @@ class IngdibaApiServiceTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('JSON parsing error: Syntax error');
+            ->with($this->stringContains('Failed to parse ingdiba API'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
@@ -101,7 +101,7 @@ class IngdibaApiServiceTest extends TestCase
 
         $this->logger->expects($this->once())
             ->method('error')
-            ->with($this->stringContains('Invalid response format'));
+            ->with($this->stringContains('Response is missing a valid'));
 
         $result = $this->service->getRates($amount);
         $this->assertEquals([], $result);
