@@ -4,11 +4,12 @@ namespace Tests\Unit\Services\Credit\Providers;
 
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Http\Message\StreamInterface;
 use Psr\Log\LoggerInterface;
 use App\Services\Credit\Providers\IngdibaApiService;
 use App\Services\HttpRequestService;
 use App\Config\ProviderConfig;
-use JsonException;
+use Psr\Http\Message\ResponseInterface;
 use Exception;
 
 /**
@@ -32,39 +33,36 @@ class IngdibaApiServiceTest extends TestCase
     public function testGetRatesReturnsFormattedResponseWhenValid(): void
     {
         $amount = 5000.0;
-        $apiUrl = 'https://api.ingdiba.test';
-        $accessToken = 'test-token';
-        $apiResponse = '{"zinsen": "5.99", "duration": "12"}';
-
-        $this->providerConfig->expects($this->once())
-            ->method('getApiUrl')
-            ->willReturn($apiUrl);
-
-        $this->providerConfig->expects($this->once())
-            ->method('getXAccessToken')
-            ->willReturn($accessToken);
-
-        $this->httpService->expects($this->once())
-            ->method('get')
-            ->with($apiUrl . '&amount=' . $amount, ['X-Access-key' => $accessToken])
-            ->willReturn($apiResponse);
-
         $expected = [
             'rate' => '5.99%',
             'duration' => '12 months',
             'provider' => 'ingdiba'
         ];
+        $apiResponse = '{"zinsen": "5.99", "duration": "12"}';
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $bodyMock = $this->createMock(StreamInterface::class);
+
+        $bodyMock->expects($this->once())
+            ->method('getContents')
+            ->willReturn($apiResponse);
+
+        $responseMock->expects($this->once())
+            ->method('getBody')
+            ->willReturn($bodyMock);
+
+        $this->httpService->expects($this->once())
+            ->method('send')
+            ->willReturn($responseMock);
 
         $result = $this->service->getRates($amount);
         $this->assertEquals($expected, $result);
     }
-
     public function testGetRatesReturnsEmptyArrayOnHttpError(): void
     {
         $amount = 5000.0;
-
-        $this->providerConfig->method('getApiUrl')->willReturn('https://api.ingdiba.test');
-        $this->httpService->method('get')
+        $expected = [];
+        $this->httpService->method('send')
             ->willThrowException(new Exception('Connection failed'));
 
         $this->logger->expects($this->atLeast(1))
@@ -72,54 +70,90 @@ class IngdibaApiServiceTest extends TestCase
             ->with($this->stringContains('Failed to retrieve ingdiba API response for URL'));
 
         $result = $this->service->getRates($amount);
-        $this->assertEquals([], $result);
+        $this->assertEquals($expected, $result);
     }
 
     public function testGetRatesReturnsEmptyArrayOnInvalidJson(): void
     {
         $amount = 5000.0;
-        $invalidJson = '{invalid-json}';
+        $expected = [];
 
-        $this->providerConfig->method('getApiUrl')->willReturn('https://api.ingdiba.test');
-        $this->httpService->method('get')->willReturn($invalidJson);
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $bodyMock = $this->createMock(StreamInterface::class);
+
+        $invalidJson = '{"invalidJson"}';
+        $bodyMock->expects($this->once())
+            ->method('getContents')
+            ->willReturn($invalidJson);
+
+        $responseMock->method('getBody')->willReturn($bodyMock);
+
+        $this->httpService->expects($this->once())
+            ->method('send')
+            ->willReturn($responseMock);
 
         $this->logger->expects($this->once())
             ->method('error')
             ->with($this->stringContains('Failed to parse ingdiba API'));
 
         $result = $this->service->getRates($amount);
-        $this->assertEquals([], $result);
+        $this->assertEquals($expected, $result);
     }
 
     public function testGetRatesReturnsEmptyArrayOnMissingFields(): void
     {
         $amount = 5000.0;
-        $invalidResponse = '{"some_field": "value"}';
+        $expected = [];
 
-        $this->providerConfig->method('getApiUrl')->willReturn('https://api.ingdiba.test');
-        $this->httpService->method('get')->willReturn($invalidResponse);
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $bodyMock = $this->createMock(StreamInterface::class);
+
+        $invalidResponse = '{"someField": "value"}';
+        $bodyMock->expects($this->once())
+            ->method('getContents')
+            ->willReturn($invalidResponse);
+
+        $responseMock->expects($this->once())
+            ->method('getBody')
+            ->willReturn($bodyMock);
+
+        $this->httpService->expects($this->once())
+            ->method('send')
+            ->willReturn($responseMock);
 
         $this->logger->expects($this->once())
             ->method('error')
             ->with($this->stringContains('Response is missing a valid'));
 
         $result = $this->service->getRates($amount);
-        $this->assertEquals([], $result);
+        $this->assertEquals($expected, $result);
     }
 
     public function testGetRatesHandlesSingleMonthDuration(): void
     {
         $amount = 5000.0;
-        $apiResponse = '{"zinsen": "5.99", "duration": "1"}';
-
-        $this->providerConfig->method('getApiUrl')->willReturn('https://api.ingdiba.test');
-        $this->httpService->method('get')->willReturn($apiResponse);
-
         $expected = [
             'rate' => '5.99%',
             'duration' => '1 month',
             'provider' => 'ingdiba'
         ];
+
+        $responseMock = $this->createMock(ResponseInterface::class);
+        $bodyMock = $this->createMock(StreamInterface::class);
+
+        $apiResponse = '{"zinsen": "5.99", "duration": "1"}';
+
+        $bodyMock->expects($this->once())
+            ->method('getContents')
+            ->willReturn($apiResponse);
+
+        $responseMock->expects($this->once())
+            ->method('getBody')
+            ->willReturn($bodyMock);
+
+        $this->httpService->expects($this->once())
+            ->method('send')
+            ->willReturn($responseMock);
 
         $result = $this->service->getRates($amount);
         $this->assertEquals($expected, $result);

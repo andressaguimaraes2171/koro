@@ -8,6 +8,7 @@ use App\Services\Credit\Providers\SmavaApiService;
 use App\Services\HttpRequestService;
 use Exception;
 use Psr\Log\LoggerInterface;
+use App\Services\Credit\CreditProviderInterface;
 
 class CreditProviderFactory
 {
@@ -35,8 +36,12 @@ class CreditProviderFactory
         $providers = [];
         foreach ($this->providersConfig->all() as $providerName => $provider) {
             if (isset($this->providerMapping[$providerName])) {
-                $providers[] = new $this->providerMapping[$providerName]($this->httpService, $this->logger, $provider);
+                $provider = new $this->providerMapping[$providerName]($this->httpService, $this->logger, $provider);
+                if ($provider instanceof CreditProviderInterface === false) {
+                    throw new Exception("Provider $providerName does not implement CreditProviderInterface");
+                }
 
+                $providers[] = $provider;
             } else {
                 throw new Exception("Unknown provider: $providerName");
             }

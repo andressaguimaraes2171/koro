@@ -9,7 +9,9 @@ use App\Errors\Credit\Provider\ApiRequestException;
 use App\Errors\Credit\Provider\ApiResponseFormatException;
 use App\Errors\Credit\Provider\InvalidApiResponseException;
 use Exception;
+use GuzzleHttp\Psr7\Request;
 use JsonException;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
 class SmavaApiService implements CreditProviderInterface
@@ -28,25 +30,26 @@ class SmavaApiService implements CreditProviderInterface
         $this->providerApiSettings = $providerApiSettings;
     }
 
-    private function retrieveApiResponse(int $amount): string
+    private function retrieveApiResponse(int $amount): ResponseInterface
     {
         $url = $this->providerApiSettings->getApiUrl() . '&amount=' . $amount;
-
+        $headers = [
+            'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
+        ];
+        $request = new Request('GET', $url, $headers);
         try {
-            return $this->httpService->get($url, [
-                'X-Access-key' => $this->providerApiSettings->getXAccessToken(),
-            ]);
+            return $this->httpService->send($request);
         } catch (Exception $e) {
             throw new ApiRequestException("Failed to retrieve smava API response for URL: {$url}", 0, $e);
         }
     }
 
-    private function apiResponseToArray(string $response): array
+    private function apiResponseToArray(ResponseInterface $response): array
     {
         try {
-            return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+            return json_decode($response->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new ApiResponseFormatException("Failed to parse smava API response to array: {$apiResponse}", 0, $e);
+            throw new ApiResponseFormatException("Failed to parse smava API response to array: {$response->getBody()}", 0, $e);
         }
     }
 

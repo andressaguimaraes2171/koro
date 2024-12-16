@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+
 class HttpRequestService
 {
     private Client $client;
@@ -12,15 +15,8 @@ class HttpRequestService
         $this->client = new Client();
     }
 
-    public function get($url, $headers = []): string
+    public function send(RequestInterface $request, array $options = []): ResponseInterface
     {
-        $response = $this->client->get($url, ['headers' => $headers]);
-        return $response->getBody()->getContents();
-    }
-
-    public function post($url, $data, $headers = []): string
-    {
-        $response = $this->client->post($url, ['json' => $data, 'headers' => $headers]);
-        return $response->getBody()->getContents();
+        return $this->client->send($request, $options);
     }
 }
